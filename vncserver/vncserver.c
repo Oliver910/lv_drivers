@@ -501,6 +501,15 @@ void read_QRfbRect(vnc_context *pCtx) {
   pCtx->rct.h = ntohs(buf[3]);
 }
 
+void write_QRfbRect(vnc_context *pCtx) {
+  int16_t buf[4];
+  buf[0] = htons(pCtx->rct.x);
+  buf[1] = htons(pCtx->rct.y);
+  buf[2] = htons(pCtx->rct.w);
+  buf[3] = htons(pCtx->rct.h);
+  send(pCtx->clientFd, (char *)buf, 8, 0);
+}
+
 bool read_QRfbFrameBufferUpdateRequest(vnc_context *pCtx) {
   if (pCtx->buf_len < 9)
     return false;
@@ -508,6 +517,136 @@ bool read_QRfbFrameBufferUpdateRequest(vnc_context *pCtx) {
   ctx_dequeue(pCtx, &pCtx->incremental, 1);
   read_QRfbRect(pCtx);
   return true;
+}
+void write_QRfbRawEncoder(vnc_context *pCtx) {
+  //    QWSDisplay::grab(false);
+
+  // QVNCDirtyMap *map = server->dirtyMap();
+  //  QTcpSocket *socket = server->clientSocket();
+
+  // const int bytesPerPixel = server->clientBytesPerPixel();
+  // QSize screenSize = server->screen()->geometry().size();
+
+  // // create a region from the dirty rects and send the region's merged rects.
+  // QRegion rgn;
+  // if (map) {
+  //   for (int y = 0; y < map->mapHeight; ++y) {
+  //     for (int x = 0; x < map->mapWidth; ++x) {
+  //       if (!map->dirty(x, y))
+  //         continue;
+  //       rgn += QRect(x * MAP_TILE_SIZE, y * MAP_TILE_SIZE, MAP_TILE_SIZE,
+  //                    MAP_TILE_SIZE);
+  //       map->setClean(x, y);
+  //     }
+  //   }
+
+  //   rgn &= QRect(0, 0, screenSize.width(), screenSize.height());
+  // }
+  // const QVector<QRect> rects = rgn.rects();
+
+  // {
+  const char tmp[2] = {0, 0}; // msg type, padding
+  send(pCtx->clientFd, tmp, sizeof(tmp), 0);
+  // socket->write(tmp, sizeof(tmp));
+  // }
+
+  //{
+  // const quint16 count = htons(rects.size());
+  // socket->write((char *)&count, sizeof(count));
+  const uint16_t count = htons(1);
+  send(pCtx->clientFd, (char *)&count, sizeof(count), 0);
+  //}
+
+  if (count <= 0) {
+    //        QWSDisplay::ungrab();
+    return;
+  }
+
+  // for qrect
+  pCtx->rct.x = 0;
+  pCtx->rct.y = 0;
+  pCtx->rct.w = 800;
+  pCtx->rct.h = 600;
+  write_QRfbRect(pCtx);
+  const uint32_t encoding = htonl(0); // raw encoding
+  send(pCtx->clientFd, (char *)&encoding, sizeof(encoding), 0);
+
+  char szbuf[800 * 4];
+
+  // memset(szbuf, 0x00, 800 * 4);
+  for (int i = 0; i < pCtx->rct.h; ++i) {
+    uint32_t *ptr = &szbuf[i * 4];
+    *ptr = i;
+  }
+
+  for (int i = 0; i < pCtx->rct.h; ++i) {
+    send(pCtx->clientFd, (const char *)szbuf, pCtx->rct.w * 4, 0);
+  }
+
+  // const QImage *screenImage = server->screenImage();
+
+  // for (int i = 0; i < rects.size(); ++i) {
+  //   const QRect tileRect = rects.at(i);
+  //   const QRfbRect rect(tileRect.x(), tileRect.y(), tileRect.width(),
+  //                      tileRect.height());
+  // rect.write(socket);
+
+  // const quint32 encoding = htonl(0); // raw encoding
+  // socket->write((char *)&encoding, sizeof(encoding));
+
+  // int linestep = screenImage->bytesPerLine();
+  // const uchar *screendata =
+  //     screenImage->scanLine(rect.y) + rect.x * screenImage->depth() / 8;
+
+  // #ifndef QT_NO_QWS_CURSOR
+  //     // hardware cursors must be blended with the
+  //     screen memory const bool doBlendCursor =
+  //     qt_screencursor && !server->hasClientCursor() &&
+  //                                qt_screencursor->isAccelerated();
+  //     QImage tileImage;
+  //     if (doBlendCursor) {
+  //       const QRect cursorRect =
+  //       qt_screencursor->boundingRect().translated(
+  //           -server->screen()->offset());
+  //       if (tileRect.intersects(cursorRect)) {
+  //         tileImage = screenImage->copy(tileRect);
+  //         blendCursor(tileImage,
+  //         tileRect.translated(server->screen()->offset()));
+  //         screendata = tileImage.bits(); linestep =
+  //         tileImage.bytesPerLine();
+  //       }
+  //     }
+  // #endif // QT_NO_QWS_CURSOR
+
+  // if (server->doPixelConversion()) {
+  //   const int bufferSize = rect.w * rect.h *
+  //   bytesPerPixel; if (bufferSize > buffer.size())
+  //     buffer.resize(bufferSize);
+
+  //   // convert pixels
+  //   char *b = buffer.data();
+  //   const int bstep = rect.w * bytesPerPixel;
+  //   for (int i = 0; i < rect.h; ++i) {
+  //     server->convertPixels(b, (const char
+  //     *)screendata, rect.w); screendata += linestep; b
+  //     += bstep;
+  //   }
+  //   socket->write(buffer.constData(), bufferSize);
+  // } else
+
+  // {
+  //   for (int i = 0; i < rect.h; ++i) {
+  //     socket->write((const char *)screendata, rect.w * bytesPerPixel);
+  //     screendata += linestep;
+  //   }
+  // }
+  // if (socket->state() ==
+  // QAbstractSocket::UnconnectedState)
+  //   break;
+  //}
+  fsync(pCtx->clientFd);
+
+  //    QWSDisplay::ungrab();
 }
 
 void checkUpdate(vnc_context *pCtx) {
@@ -524,7 +663,8 @@ void checkUpdate(vnc_context *pCtx) {
     pCtx->wantUpdate = false;
     return;
   }
-
+  write_QRfbRawEncoder(pCtx);
+  pCtx->wantUpdate = false;
   // if (dirtyMap()->numDirty > 0) {
   //   if (pCtx->encoder)
   //     encoder->write();
@@ -539,8 +679,9 @@ void frameBuffer_update_request(vnc_context *pCtx) {
     if (!pCtx->incremental) {
       printf("screen[%d %d %d %d]\n", pCtx->rct.x, pCtx->rct.y, pCtx->rct.w,
              pCtx->rct.h);
-      // QRect r(ev.rect.x, ev.rect.y, ev.rect.w, ev.rect.h);
-      // ////###            r.translate(qvnc_screen->offset());
+      // QRect r(ev.rect.x, ev.rect.y, ev.rect.w,
+      // ev.rect.h);
+      // ////### r.translate(qvnc_screen->offset());
       // qvnc_screen->d_ptr->setDirty(r, true);
     }
     pCtx->wantUpdate = true;
@@ -583,27 +724,31 @@ bool read_QRfbPointerEvent(vnc_context *pCtx) {
 }
 
 void pointerEvent(vnc_context *pCtx) {
-  // QPoint screenOffset = this->screen()->geometry().topLeft();
+  // QPoint screenOffset =
+  // this->screen()->geometry().topLeft();
 
   // QRfbPointerEvent ev;
   if (read_QRfbPointerEvent(pCtx)) {
     // QPoint eventPoint(ev.x, ev.y);
-    // eventPoint += screenOffset; // local to global translation
+    // eventPoint += screenOffset; // local to global
+    // translation
 
     printf("pos[%d,%d]\n", pCtx->mouse_posx, pCtx->mouse_posy);
     if (pCtx->wheelDirection == WheelNone) {
       // QEvent::Type type = QEvent::MouseMove;
       // Qt::MouseButton button = Qt::NoButton;
       // bool isPress;
-      // if (buttonChange(buttons, ev.buttons, &button, &isPress))
+      // if (buttonChange(buttons, ev.buttons, &button,
+      // &isPress))
       //   type = isPress ? QEvent::MouseButtonPress :
       //   QEvent::MouseButtonRelease;
-      // QWindowSystemInterface::handleMouseEvent(0, eventPoint, eventPoint,
+      // QWindowSystemInterface::handleMouseEvent(0,
+      // eventPoint, eventPoint,
       //                                          ev.buttons);
     } else {
-      // No buttons or motion reported at the same time as wheel events
-      // Qt::Orientation orientation;
-      // if (pCtx->wheelDirection == WheelLeft ||
+      // No buttons or motion reported at the same time as
+      // wheel events Qt::Orientation orientation; if
+      // (pCtx->wheelDirection == WheelLeft ||
       //     pCtx->wheelDirection == WheelRight)
       //   orientation = Qt::Horizontal;
       // else
@@ -613,8 +758,8 @@ void pointerEvent(vnc_context *pCtx) {
                           pCtx->wheelDirection == WheelUp)
                              ? 1
                              : -1);
-      // QWindowSystemInterface::handleWheelEvent(0, eventPoint, eventPoint,
-      // delta,
+      // QWindowSystemInterface::handleWheelEvent(0,
+      // eventPoint, eventPoint, delta,
       //                                          orientation);
     }
     pCtx->handleMsg = false;
@@ -665,24 +810,27 @@ void pollkeyEvent(vnc_context *pCtx) {
 
     // if (pCtx->keycode == Qt::Key_Shift)
     // //   keymod =
-    // //       ev.down ? keymod | Qt::ShiftModifier : keymod &
-    // ~Qt::ShiftModifier;
+    // //       ev.down ? keymod | Qt::ShiftModifier :
+    // keymod & ~Qt::ShiftModifier;
     // // else if (ev.keycode == Qt::Key_Control)
-    // //   keymod = ev.down ? keymod | Qt::ControlModifier
-    // //                    : keymod & ~Qt::ControlModifier;
+    // //   keymod = ev.down ? keymod |
+    // Qt::ControlModifier
+    // //                    : keymod &
+    // ~Qt::ControlModifier;
     // // else if (pCtx->.keycode == Qt::Key_Alt)
-    // //   keymod = ev.down ? keymod | Qt::AltModifier : keymod &
-    // ~Qt::AltModifier;
+    // //   keymod = ev.down ? keymod | Qt::AltModifier :
+    // keymod & ~Qt::AltModifier;
     // // if (ev.unicode || ev.keycode) {
-    // //   //            qDebug() << "keyEvent" << hex << ev.unicode <<
-    // ev.keycode <<
+    // //   //            qDebug() << "keyEvent" << hex <<
+    // ev.unicode << ev.keycode <<
     // //   //            keymod << ev.down;
-    // //   QEvent::Type type = ev.down ? QEvent::KeyPress : QEvent::KeyRelease;
+    // //   QEvent::Type type = ev.down ? QEvent::KeyPress
+    // : QEvent::KeyRelease;
     // //   QString str;
     // //   if (ev.unicode && ev.unicode != 0xffff)
     // //     str = QString(ev.unicode);
-    // //   QWindowSystemInterface::handleKeyEvent(0, type, ev.keycode, keymod,
-    // str);
+    // //   QWindowSystemInterface::handleKeyEvent(0,
+    // type, ev.keycode, keymod, str);
     // }
     pCtx->handleMsg = false;
   }
@@ -709,7 +857,8 @@ void state_connected(vnc_context *pCtx) {
         set_encodings(pCtx);
         break;
       case FramebufferUpdateRequest:
-        // printf("Not supported: FramebufferUpdateRequest");
+        // printf("Not supported:
+        // FramebufferUpdateRequest");
         frameBuffer_update_request(pCtx);
         break;
       case KeyEvent:
