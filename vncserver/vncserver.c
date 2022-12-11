@@ -571,16 +571,26 @@ void write_QRfbRawEncoder(vnc_context *pCtx) {
   const uint32_t encoding = htonl(0); // raw encoding
   send(pCtx->clientFd, (char *)&encoding, sizeof(encoding), 0);
 
-  char szbuf[800 * 4];
+  // char szbuf[800 * 4];
 
-  // memset(szbuf, 0x00, 800 * 4);
-  for (int i = 0; i < pCtx->rct.h; ++i) {
-    uint32_t *ptr = &szbuf[i * 4];
-    *ptr = i;
+  // // memset(szbuf, 0x00, 800 * 4);
+  // for (int i = 0; i < pCtx->rct.h; ++i) {
+  //   uint32_t *ptr = &szbuf[i * 4];
+  //   *ptr = i;
+  // }
+  int32_t fbptr[800 * 600];
+  get_monitor_param(fbptr);
+  FILE *fp = fopen("/home/oliver/4.ram", "wb+");
+  if (fp) {
+    int ret = fwrite(fbptr, 4, 800 * 600, fp);
+    printf("ret = %d %p\n", ret, fbptr);
+    fflush(fp);
+    fclose(fp);
   }
-
+  int8_t *ppfb32 = (int8_t *)fbptr;
   for (int i = 0; i < pCtx->rct.h; ++i) {
-    send(pCtx->clientFd, (const char *)szbuf, pCtx->rct.w * 4, 0);
+    send(pCtx->clientFd, (const char *)ppfb32, pCtx->rct.w * 4, 0);
+    ppfb32 += (pCtx->rct.w * 4);
   }
 
   // const QImage *screenImage = server->screenImage();
@@ -872,7 +882,7 @@ void state_connected(vnc_context *pCtx) {
       case ClientCutText:
         printf("Not supported: ClientCutText");
         // clientCutText();
-        assert(false);
+        // assert(false);
         break;
       default:
         printf("Unknown message type: %d", (int)pCtx->msgType);
@@ -880,6 +890,7 @@ void state_connected(vnc_context *pCtx) {
       }
     }
   } while (!pCtx->handleMsg && pCtx->buf_len > 0);
+  write_QRfbRawEncoder(pCtx);
 }
 void vnc_client_process(vnc_context *pCtx) {
   int ret;
