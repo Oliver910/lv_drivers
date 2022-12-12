@@ -97,7 +97,7 @@ void monitor_init(void) {
   lv_timer_create(sdl_event_handler, 10, NULL);
 }
 
-static uint32_t pixelbuf[800 * 600];
+uint32_t pixelbuf[800 * 600];
 /**
  * Flush a buffer to the marked area
  * @param drv pointer to driver where this function belongs

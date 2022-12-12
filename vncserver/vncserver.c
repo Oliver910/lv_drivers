@@ -518,44 +518,13 @@ bool read_QRfbFrameBufferUpdateRequest(vnc_context *pCtx) {
   read_QRfbRect(pCtx);
   return true;
 }
+extern uint32_t pixelbuf[];
+
 void write_QRfbRawEncoder(vnc_context *pCtx) {
-  //    QWSDisplay::grab(false);
-
-  // QVNCDirtyMap *map = server->dirtyMap();
-  //  QTcpSocket *socket = server->clientSocket();
-
-  // const int bytesPerPixel = server->clientBytesPerPixel();
-  // QSize screenSize = server->screen()->geometry().size();
-
-  // // create a region from the dirty rects and send the region's merged rects.
-  // QRegion rgn;
-  // if (map) {
-  //   for (int y = 0; y < map->mapHeight; ++y) {
-  //     for (int x = 0; x < map->mapWidth; ++x) {
-  //       if (!map->dirty(x, y))
-  //         continue;
-  //       rgn += QRect(x * MAP_TILE_SIZE, y * MAP_TILE_SIZE, MAP_TILE_SIZE,
-  //                    MAP_TILE_SIZE);
-  //       map->setClean(x, y);
-  //     }
-  //   }
-
-  //   rgn &= QRect(0, 0, screenSize.width(), screenSize.height());
-  // }
-  // const QVector<QRect> rects = rgn.rects();
-
-  // {
   const char tmp[2] = {0, 0}; // msg type, padding
   send(pCtx->clientFd, tmp, sizeof(tmp), 0);
-  // socket->write(tmp, sizeof(tmp));
-  // }
-
-  //{
-  // const quint16 count = htons(rects.size());
-  // socket->write((char *)&count, sizeof(count));
   const uint16_t count = htons(1);
   send(pCtx->clientFd, (char *)&count, sizeof(count), 0);
-  //}
 
   if (count <= 0) {
     //        QWSDisplay::ungrab();
@@ -571,23 +540,16 @@ void write_QRfbRawEncoder(vnc_context *pCtx) {
   const uint32_t encoding = htonl(0); // raw encoding
   send(pCtx->clientFd, (char *)&encoding, sizeof(encoding), 0);
 
-  // char szbuf[800 * 4];
-
-  // // memset(szbuf, 0x00, 800 * 4);
-  // for (int i = 0; i < pCtx->rct.h; ++i) {
-  //   uint32_t *ptr = &szbuf[i * 4];
-  //   *ptr = i;
-  // }
   int32_t fbptr[800 * 600];
   get_monitor_param(fbptr);
-  FILE *fp = fopen("/home/oliver/4.ram", "wb+");
-  if (fp) {
-    int ret = fwrite(fbptr, 4, 800 * 600, fp);
-    printf("ret = %d %p\n", ret, fbptr);
-    fflush(fp);
-    fclose(fp);
-  }
-  int8_t *ppfb32 = (int8_t *)fbptr;
+  // FILE *fp = fopen("/home/oliver/4.ram", "wb+");
+  // if (fp) {
+  //   int ret = fwrite(fbptr, 4, 800 * 600, fp);
+  //   printf("ret = %d %p\n", ret, fbptr);
+  //   fflush(fp);
+  //   fclose(fp);
+  // }
+  int8_t *ppfb32 = (int8_t *)pixelbuf;
   for (int i = 0; i < pCtx->rct.h; ++i) {
     send(pCtx->clientFd, (const char *)ppfb32, pCtx->rct.w * 4, 0);
     ppfb32 += (pCtx->rct.w * 4);
