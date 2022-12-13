@@ -101,6 +101,7 @@ typedef struct vnc_context {
   RfbRect rct;
 
   /// @brief wheel
+  int mouse_act;
   int mouse_posx;
   int mouse_posy;
   enButtonAction buttons;
@@ -157,6 +158,9 @@ static RfbPixelFormat s_pixformat = {.bitsPerPixel = 32,
                                      .redShift = 16,
                                      .greenShift = 8,
                                      .blueShift = 0};
+
+static lv_indev_data_t s_indev_data;
+static int s_mouse_act = 0;
 /*********************
  *      MACROS
  **********************/
@@ -187,6 +191,26 @@ void vncserver_get_sizes(uint32_t *width, uint32_t *height) {
   //
   //   if (height)
   //      *height = vinfo.yres;
+}
+
+int vnc_mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
+  (void)indev_drv; /*Unused*/
+
+  /*Store the collected data*/
+  // data->point.x = 100;
+  // data->point.y = 100;
+  // data->state = LV_INDEV_STATE_RELEASED;
+  //     left_button_down ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+
+  if (s_mouse_act == 1) {
+    data->point.x = s_indev_data.point.x;
+    data->point.y = s_indev_data.point.y;
+    data->state = s_indev_data.state;
+    s_mouse_act = 0;
+    printf("vnc_mouse_read [%d,%d]\n", data->point.x, data->point.y);
+    return 1;
+  }
+  return 0;
 }
 
 /**********************
@@ -220,6 +244,7 @@ static int init_vncserver(void) {
   listen(sockfd, 5);
   return sockfd;
 }
+
 void ctx_dequeue(vnc_context *pCtx, uint8_t *dest, int nLen) {
   memcpy(dest, pCtx->buf, nLen);
   pCtx->buf_len = pCtx->buf_len - nLen;
@@ -700,11 +725,8 @@ void pointerEvent(vnc_context *pCtx) {
   // this->screen()->geometry().topLeft();
 
   // QRfbPointerEvent ev;
+  printf("pointerEvent[%d,%d]\n", pCtx->mouse_posx, pCtx->mouse_posy);
   if (read_QRfbPointerEvent(pCtx)) {
-    // QPoint eventPoint(ev.x, ev.y);
-    // eventPoint += screenOffset; // local to global
-    // translation
-
     printf("pos[%d,%d]\n", pCtx->mouse_posx, pCtx->mouse_posy);
     if (pCtx->wheelDirection == WheelNone) {
       // QEvent::Type type = QEvent::MouseMove;
@@ -734,6 +756,12 @@ void pointerEvent(vnc_context *pCtx) {
       // eventPoint, eventPoint, delta,
       //                                          orientation);
     }
+    s_indev_data.point.x = pCtx->mouse_posx;
+    s_indev_data.point.y = pCtx->mouse_posy;
+    s_indev_data.state = pCtx->buttons == NoButton ? LV_INDEV_STATE_RELEASED
+                                                   : LV_INDEV_STATE_PRESSED;
+
+    s_mouse_act = 1;
     pCtx->handleMsg = false;
   }
 }
@@ -852,7 +880,7 @@ void state_connected(vnc_context *pCtx) {
       }
     }
   } while (!pCtx->handleMsg && pCtx->buf_len > 0);
-  write_QRfbRawEncoder(pCtx);
+  // write_QRfbRawEncoder(pCtx);
 }
 void vnc_client_process(vnc_context *pCtx) {
   int ret;
@@ -885,13 +913,13 @@ void vnc_client_process(vnc_context *pCtx) {
       perror("select()");
       break;
     } else if (retval) {
-      printf("Data is available now.\n");
+      // printf("Data is available now.\n");
       /* FD_ISSET(0, &rfds) will be true. */
       if (FD_ISSET(pCtx->clientFd, &rfds)) {
         ret = recv(pCtx->clientFd, &pCtx->buf[pCtx->buf_len],
                    256 - pCtx->buf_len, 0);
         pCtx->buf_len += ret;
-        printf("pCtx->buf_len = %d\n", pCtx->buf_len);
+        // printf("pCtx->buf_len = %d\n", pCtx->buf_len);
 
         switch (pCtx->state) {
         case enState_Protocol:

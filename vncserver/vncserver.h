@@ -33,11 +33,12 @@ extern "C" {
 /**********************
  * GLOBAL PROTOTYPES
  **********************/
-void  vncserver_init(void);
+void vncserver_init(void);
 void vncserver_exit(void);
-void vncserver_flush(lv_disp_drv_t * drv, const lv_area_t * area, lv_color_t * color_p);
-void vncserver_get_sizes(uint32_t *width, uint32_t *height) ;
-
+void vncserver_flush(lv_disp_drv_t *drv, const lv_area_t *area,
+                     lv_color_t *color_p);
+void vncserver_get_sizes(uint32_t *width, uint32_t *height);
+int vnc_mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
 /**********************
  *      MACROS
  **********************/
@@ -45,6 +46,5 @@ void vncserver_get_sizes(uint32_t *width, uint32_t *height) ;
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
-
 
 #endif

@@ -57,12 +57,13 @@ void mouse_init(void);
  * @param indev_drv pointer to the related input device driver
  * @param data store the mouse data here
  */
-void mouse_read(lv_indev_drv_t * indev_drv, lv_indev_data_t * data);
+void mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
 
 /**
  * It will be called from the main SDL thread
  */
 void mouse_handler(SDL_Event *event);
+void update_mouse(uint16_t posx, uint16_t posy, uint16_t state);
 
 /**********************
  *      MACROS
