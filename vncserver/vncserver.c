@@ -207,7 +207,7 @@ int vnc_mouse_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
     data->point.y = s_indev_data.point.y;
     data->state = s_indev_data.state;
     s_mouse_act = 0;
-    printf("vnc_mouse_read [%d,%d]\n", data->point.x, data->point.y);
+    // printf("vnc_mouse_read [%d,%d]\n", data->point.x, data->point.y);
     return 1;
   }
   return 0;
@@ -725,9 +725,9 @@ void pointerEvent(vnc_context *pCtx) {
   // this->screen()->geometry().topLeft();
 
   // QRfbPointerEvent ev;
-  printf("pointerEvent[%d,%d]\n", pCtx->mouse_posx, pCtx->mouse_posy);
+  // printf("pointerEvent[%d,%d]\n", pCtx->mouse_posx, pCtx->mouse_posy);
   if (read_QRfbPointerEvent(pCtx)) {
-    printf("pos[%d,%d]\n", pCtx->mouse_posx, pCtx->mouse_posy);
+    // printf("pos[%d,%d]\n", pCtx->mouse_posx, pCtx->mouse_posy);
     if (pCtx->wheelDirection == WheelNone) {
       // QEvent::Type type = QEvent::MouseMove;
       // Qt::MouseButton button = Qt::NoButton;
@@ -781,7 +781,10 @@ bool read_QRfbKeyEvent(vnc_context *pCtx) {
   pCtx->unicode = 0;
   pCtx->keycode = 0;
 
-  printf("key = %x\n", key);
+  printf("key = %x down=%x\n", key, pCtx->key_down);
+
+  update_keyboard(key, pCtx->key_down ? LV_INDEV_STATE_PRESSED
+                                      : LV_INDEV_STATE_RELEASED);
 
   int i = 0;
   // while (keyMap[i].keysym && !pCtx->keycode) {
@@ -918,6 +921,8 @@ void vnc_client_process(vnc_context *pCtx) {
       if (FD_ISSET(pCtx->clientFd, &rfds)) {
         ret = recv(pCtx->clientFd, &pCtx->buf[pCtx->buf_len],
                    256 - pCtx->buf_len, 0);
+        if (ret == 0)
+          break;
         pCtx->buf_len += ret;
         // printf("pCtx->buf_len = %d\n", pCtx->buf_len);
 

@@ -56,14 +56,16 @@ void keyboard_init(void);
  * @param indev_drv pointer to the related input device driver
  * @param data store the read data here
  */
-void keyboard_read(lv_indev_drv_t * indev_drv, lv_indev_data_t * data);
+void keyboard_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
 
 /**
- * It is called periodically from the SDL thread to check a key is pressed/released
+ * It is called periodically from the SDL thread to check a key is
+ * pressed/released
  * @param event describes the event
  */
 void keyboard_handler(SDL_Event *event);
 
+void update_keyboard(uint32_t lkey, lv_indev_state_t lstate);
 /**********************
  *      MACROS
  **********************/
